@@ -11,10 +11,15 @@ exports.listFriends = async (req, res, next) => {
   try {
     const friends = await Friendship.findFriends(req.user.id);
     const pending = await Friendship.findPendingRequests(req.user.id);
+    const sent = await Friendship.findSentRequests(req.user.id);
     
     res.status(200).json({
       status: 'success',
-      data: { friends, pending }
+      data: { 
+        friends, 
+        pending, // Incoming
+        sent     // Outgoing
+      }
     });
   } catch (err) {
     next(err);

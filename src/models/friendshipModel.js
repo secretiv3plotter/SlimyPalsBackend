@@ -30,6 +30,20 @@ const Friendship = {
     return result.rows;
   },
 
+  async findSentRequests(userId) {
+    const result = await db.query(
+      `SELECT f.id, f.created_at,
+              u.id as receiver_id, u.username as receiver_username
+       FROM friendships f
+       JOIN users u ON u.id = f.friend_user_id
+       WHERE f.user_id = $1
+       AND f.status = 'pending'
+       AND f.deleted_at IS NULL`,
+      [userId]
+    );
+    return result.rows;
+  },
+
   async findRequest(senderId, receiverId) {
     const result = await db.query(
       `SELECT * FROM friendships 
