@@ -14,11 +14,11 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const app = express();
 
 // Middleware
-app.use(helmet());
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
   credentials: true
 }));
+app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
 
