@@ -1,10 +1,5 @@
--- SlimyPals Initial Database Schema
-
--- Enable pgcrypto for UUID generation if needed, 
--- though we can also generate them in Node.js
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- Users Table
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username VARCHAR(255) UNIQUE NOT NULL,
@@ -16,20 +11,18 @@ CREATE TABLE IF NOT EXISTS users (
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
--- Slimes Table
 CREATE TABLE IF NOT EXISTS slimes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     rarity VARCHAR(50) NOT NULL CHECK (rarity IN ('Common', 'Rare', 'Mythical')),
     type VARCHAR(100) NOT NULL,
-    color VARCHAR(7) NOT NULL, -- Hex color code
+    color VARCHAR(7) NOT NULL,
     level INTEGER DEFAULT 1 CHECK (level IN (1, 2, 3)),
     last_fed_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
--- Food Factory Stock Table
 CREATE TABLE IF NOT EXISTS food_factory_stock (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -39,7 +32,6 @@ CREATE TABLE IF NOT EXISTS food_factory_stock (
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
--- Friendships Table
 CREATE TABLE IF NOT EXISTS friendships (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -50,7 +42,6 @@ CREATE TABLE IF NOT EXISTS friendships (
     UNIQUE(user_id, friend_user_id)
 );
 
--- Interaction Logs Table
 CREATE TABLE IF NOT EXISTS interaction_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -59,7 +50,6 @@ CREATE TABLE IF NOT EXISTS interaction_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Notifications Table
 CREATE TABLE IF NOT EXISTS notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -69,7 +59,6 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Refresh Tokens Table
 CREATE TABLE IF NOT EXISTS refresh_tokens (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -78,7 +67,6 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_slimes_user_id ON slimes(user_id);
 CREATE INDEX IF NOT EXISTS idx_friendships_user_id ON friendships(user_id);
 CREATE INDEX IF NOT EXISTS idx_friendships_friend_user_id ON friendships(friend_user_id);

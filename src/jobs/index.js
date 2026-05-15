@@ -1,8 +1,7 @@
 const cron = require('node-cron');
-const db = require('../config/db');
+const db = require('../infrastructure/db');
 
 const initJobs = () => {
-  // Daily Reset (12 AM) - Reset daily_summons_left to 9 for all users
   cron.schedule('0 0 * * *', async () => {
     console.log('Running daily summon reset...');
     try {
@@ -13,17 +12,13 @@ const initJobs = () => {
     }
   });
 
-  // Weekly Cleanup (12 AM on Sundays) - Permanently delete soft-deleted records older than 7 days
   cron.schedule('0 0 * * 0', async () => {
     console.log('Running weekly cleanup of soft-deleted records...');
     try {
-      // Delete slimes
       await db.query("DELETE FROM slimes WHERE deleted_at < NOW() - INTERVAL '7 days'");
       
-      // Delete friendships
       await db.query("DELETE FROM friendships WHERE deleted_at < NOW() - INTERVAL '7 days'");
       
-      // Delete users (Note: This is more complex due to cascading, but the schema handles cascading)
       await db.query("DELETE FROM users WHERE deleted_at < NOW() - INTERVAL '7 days'");
       
       console.log('Weekly cleanup complete.');

@@ -5,14 +5,14 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
-const authRoutes = require('./routes/authRoutes');
-const domainRoutes = require('./routes/domainRoutes');
-const slimeRoutes = require('./routes/slimeRoutes');
-const foodFactoryRoutes = require('./routes/foodFactoryRoutes');
-const friendsRoutes = require('./routes/friendsRoutes');
-const notificationRoutes = require('./routes/notificationRoutes');
-const syncRoutes = require('./routes/syncRoutes');
-const usersRoutes = require('./routes/usersRoutes');
+const authRoutes = require('./features/auth/authRoutes');
+const domainRoutes = require('./features/domain/domainRoutes');
+const slimeRoutes = require('./features/slimes/slimeRoutes');
+const foodFactoryRoutes = require('./features/foodFactory/foodFactoryRoutes');
+const friendsRoutes = require('./features/friends/friendsRoutes');
+const notificationRoutes = require('./features/notifications/notificationRoutes');
+const syncRoutes = require('./features/sync/syncRoutes');
+const usersRoutes = require('./features/users/usersRoutes');
 
 const app = express();
 
@@ -32,20 +32,17 @@ const corsOptions = {
   credentials: true
 };
 
-// Middleware
 app.use(cors(corsOptions));
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
 
-// Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000 // normal gameplay does frequent small reads and websocket-triggered refreshes
+  windowMs: 15 * 60 * 1000,
+  max: 1000
 });
 app.use('/api/', limiter);
 
-// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api', domainRoutes);
 app.use('/api', slimeRoutes);
@@ -55,12 +52,10 @@ app.use('/api', notificationRoutes);
 app.use('/api', syncRoutes);
 app.use('/api', usersRoutes);
 
-// Health check
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Basic Error Handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({
