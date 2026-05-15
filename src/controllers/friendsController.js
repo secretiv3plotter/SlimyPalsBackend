@@ -3,9 +3,10 @@ const User = require('../models/userModel');
 const Slime = require('../models/slimeModel');
 const FoodFactory = require('../models/foodFactoryModel');
 const Interaction = require('../models/interactionModel');
-const Notification = require('../models/notificationModel');
 const presenceManager = require('../sockets/presenceManager');
 const db = require('../config/db');
+
+const MAX_FRIENDS = 4;
 
 exports.listFriends = async (req, res, next) => {
   try {
@@ -28,7 +29,7 @@ exports.listFriends = async (req, res, next) => {
 
 exports.sendFriendRequest = async (req, res, next) => {
   try {
-    const { username } = req.body;
+    const username = (req.body.username || '').trim();
 
     if (!username) {
       return res.status(400).json({ error: { message: 'Username is required' } });
@@ -43,30 +44,39 @@ exports.sendFriendRequest = async (req, res, next) => {
       return res.status(404).json({ error: { message: 'User not found' } });
     }
 
-    // Check friend limit (4)
+    // Sending is allowed even if the receiver is full; acceptance checks both sides.
     const currentFriendsCount = await Friendship.countAccepted(req.user.id);
-    if (currentFriendsCount >= 4) {
+    if (currentFriendsCount >= MAX_FRIENDS) {
       return res.status(400).json({ error: { message: 'You have reached the maximum of 4 friends.' } });
     }
 
     // Check if relationship already exists
     const existing = await Friendship.findRequest(req.user.id, targetUser.id);
     if (existing) {
-      return res.status(400).json({ error: { message: 'Friend request already exists or you are already friends.' } });
+      if (existing.status === 'accepted') {
+        return res.status(400).json({ error: { message: 'You are already friends.' } });
+      }
+
+      if (existing.friend_user_id === req.user.id) {
+        const acceptResult = await Friendship.acceptWithFriendLimit(existing.id, req.user.id, MAX_FRIENDS);
+        if (acceptResult.status === 'friend_limit') {
+          return res.status(400).json({ error: { message: 'Both users need space for another friend before accepting.' } });
+        }
+
+        if (acceptResult.status === 'not_found') {
+          return res.status(404).json({ error: { message: 'Friend request not found or not for you' } });
+        }
+
+        return res.status(200).json({
+          status: 'success',
+          data: { friendship: acceptResult.friendship, autoAccepted: true }
+        });
+      }
+
+      return res.status(400).json({ error: { message: 'Friend request already sent.' } });
     }
 
     const request = await Friendship.create(req.user.id, targetUser.id);
-
-    // Create persistent notification for target user
-    await Notification.create({
-      userId: targetUser.id,
-      type: 'FRIEND_REQUEST',
-      content: {
-        senderId: req.user.id,
-        senderUsername: req.user.username,
-        friendshipId: request.id
-      }
-    });
 
     res.status(201).json({
       status: 'success',
@@ -81,20 +91,18 @@ exports.acceptFriendRequest = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // Check if user has space for more friends
-    const currentFriendsCount = await Friendship.countAccepted(req.user.id);
-    if (currentFriendsCount >= 4) {
-      return res.status(400).json({ error: { message: 'You have reached the maximum of 4 friends.' } });
+    const acceptResult = await Friendship.acceptWithFriendLimit(id, req.user.id, MAX_FRIENDS);
+    if (acceptResult.status === 'friend_limit') {
+      return res.status(400).json({ error: { message: 'Both users need space for another friend before accepting.' } });
     }
 
-    const result = await Friendship.accept(id, req.user.id);
-    if (!result) {
+    if (acceptResult.status === 'not_found') {
       return res.status(404).json({ error: { message: 'Friend request not found or not for you' } });
     }
 
     res.status(200).json({
       status: 'success',
-      data: { friendship: result }
+      data: { friendship: acceptResult.friendship }
     });
   } catch (err) {
     next(err);
