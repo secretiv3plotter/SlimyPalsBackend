@@ -8,6 +8,14 @@ const db = require('../config/db');
 
 const MAX_FRIENDS = 4;
 
+async function notifyFriendshipAccepted(friendship, action = 'friend.request.accepted') {
+  await presenceManager.refreshUsersFriends([friendship.user_id, friendship.friend_user_id]);
+  presenceManager.sendFriendListChangedToUsers([friendship.user_id, friendship.friend_user_id], {
+    action,
+    friendshipId: friendship.id
+  });
+}
+
 exports.listFriends = async (req, res, next) => {
   try {
     const friends = await Friendship.findFriends(req.user.id);
@@ -17,7 +25,10 @@ exports.listFriends = async (req, res, next) => {
     res.status(200).json({
       status: 'success',
       data: { 
-        friends, 
+        friends: friends.map(friend => ({
+          ...friend,
+          online: presenceManager.isUserOnline(friend.friend_id)
+        })),
         pending, // Incoming
         sent     // Outgoing
       }
@@ -104,6 +115,8 @@ exports.sendFriendRequest = async (req, res, next) => {
           });
         }
 
+        await notifyFriendshipAccepted(acceptResult.friendship, 'friend.request.auto_accepted');
+
         return res.status(200).json({
           status: 'success',
           data: { friendship: acceptResult.friendship, autoAccepted: true }
@@ -117,6 +130,15 @@ exports.sendFriendRequest = async (req, res, next) => {
     }
 
     const request = await Friendship.create(req.user.id, targetUser.id);
+
+    presenceManager.sendFriendListChangedToUsers([req.user.id, targetUser.id], {
+      action: 'friend.request.received',
+      friendshipId: request.id,
+      senderId: req.user.id,
+      senderUsername: req.user.username,
+      receiverId: targetUser.id,
+      receiverUsername: targetUser.username
+    });
 
     res.status(201).json({
       status: 'success',
@@ -150,6 +172,8 @@ exports.acceptFriendRequest = async (req, res, next) => {
       });
     }
 
+    await notifyFriendshipAccepted(acceptResult.friendship);
+
     res.status(200).json({
       status: 'success',
       data: { friendship: acceptResult.friendship }
@@ -172,6 +196,12 @@ exports.removeFriend = async (req, res, next) => {
         }
       });
     }
+
+    await presenceManager.refreshUsersFriends([result.user_id, result.friend_user_id]);
+    presenceManager.sendFriendListChangedToUsers([result.user_id, result.friend_user_id], {
+      action: result.status === 'pending' ? 'friend.request.removed' : 'friend.removed',
+      friendshipId: result.id
+    });
 
     res.status(204).send();
   } catch (err) {
