@@ -10,6 +10,7 @@ const slimeRoutes = require('./routes/slimeRoutes');
 const foodFactoryRoutes = require('./routes/foodFactoryRoutes');
 const friendsRoutes = require('./routes/friendsRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const usersRoutes = require('./routes/usersRoutes');
 
 const app = express();
 
@@ -48,6 +49,7 @@ app.use('/api', slimeRoutes);
 app.use('/api', foodFactoryRoutes);
 app.use('/api', friendsRoutes);
 app.use('/api', notificationRoutes);
+app.use('/api', usersRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

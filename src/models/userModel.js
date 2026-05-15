@@ -28,6 +28,17 @@ const User = {
     return result.rows[0];
   },
 
+  async findPublicByUsername(username) {
+    const result = await db.query(
+      `SELECT id, username, created_at
+       FROM users
+       WHERE LOWER(username) = LOWER($1)
+       AND deleted_at IS NULL`,
+      [username]
+    );
+    return result.rows[0];
+  },
+
   async findById(id) {
     const result = await db.query(
       'SELECT id, username, daily_summons_left, max_slime_capacity, created_at FROM users WHERE id = $1 AND deleted_at IS NULL',
