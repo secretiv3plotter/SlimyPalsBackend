@@ -32,7 +32,7 @@ const User = {
     const result = await db.query(
       `SELECT id, username, created_at
        FROM users
-       WHERE LOWER(username) = LOWER($1)
+       WHERE username = $1
        AND deleted_at IS NULL`,
       [username]
     );

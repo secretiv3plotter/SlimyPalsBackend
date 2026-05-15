@@ -30,18 +30,22 @@ exports.listFriends = async (req, res, next) => {
 exports.sendFriendRequest = async (req, res, next) => {
   try {
     const username = (req.body.username || '').trim();
+    const userId = (req.body.userId || req.body.friendUserId || '').trim();
 
-    if (!username) {
-      return res.status(400).json({ error: { message: 'Username is required' } });
+    if (!username && !userId) {
+      return res.status(400).json({ error: { message: 'Username or userId is required' } });
     }
 
-    if (username === req.user.username) {
-      return res.status(400).json({ error: { message: 'You cannot friend yourself' } });
-    }
+    const targetUser = userId
+      ? await User.findById(userId)
+      : await User.findByUsername(username);
 
-    const targetUser = await User.findByUsername(username);
     if (!targetUser) {
       return res.status(404).json({ error: { message: 'User not found' } });
+    }
+
+    if (targetUser.id === req.user.id) {
+      return res.status(400).json({ error: { message: 'You cannot friend yourself' } });
     }
 
     // Sending is allowed even if the receiver is full; acceptance checks both sides.
