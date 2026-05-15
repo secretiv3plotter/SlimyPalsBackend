@@ -30,10 +30,15 @@ exports.listFriends = async (req, res, next) => {
 exports.sendFriendRequest = async (req, res, next) => {
   try {
     const username = (req.body.username || '').trim();
-    const userId = (req.body.userId || req.body.friendUserId || '').trim();
+    const userId = (req.body.userId || req.body.friendUserId || req.body.targetUserId || req.body.id || '').trim();
 
     if (!username && !userId) {
-      return res.status(400).json({ error: { message: 'Username or userId is required' } });
+      return res.status(400).json({
+        error: {
+          message: 'Username or userId is required',
+          code: 'FRIEND_TARGET_REQUIRED'
+        }
+      });
     }
 
     const targetUser = userId
@@ -45,26 +50,44 @@ exports.sendFriendRequest = async (req, res, next) => {
     }
 
     if (targetUser.id === req.user.id) {
-      return res.status(400).json({ error: { message: 'You cannot friend yourself' } });
+      return res.status(400).json({
+        error: {
+          message: 'You cannot friend yourself',
+          code: 'CANNOT_FRIEND_SELF'
+        }
+      });
     }
 
     // Sending is allowed even if the receiver is full; acceptance checks both sides.
     const currentFriendsCount = await Friendship.countAccepted(req.user.id);
     if (currentFriendsCount >= MAX_FRIENDS) {
-      return res.status(400).json({ error: { message: 'You have reached the maximum of 4 friends.' } });
+      return res.status(400).json({
+        error: {
+          message: 'You have reached the maximum of 4 friends.',
+          code: 'FRIEND_LIMIT_REACHED'
+        }
+      });
     }
 
     // Check if relationship already exists
     const existing = await Friendship.findRequest(req.user.id, targetUser.id);
     if (existing) {
       if (existing.status === 'accepted') {
-        return res.status(400).json({ error: { message: 'You are already friends.' } });
+        return res.status(200).json({
+          status: 'success',
+          data: { friendship: existing, alreadyFriends: true }
+        });
       }
 
       if (existing.friend_user_id === req.user.id) {
         const acceptResult = await Friendship.acceptWithFriendLimit(existing.id, req.user.id, MAX_FRIENDS);
         if (acceptResult.status === 'friend_limit') {
-          return res.status(400).json({ error: { message: 'Both users need space for another friend before accepting.' } });
+          return res.status(400).json({
+            error: {
+              message: 'Both users need space for another friend before accepting.',
+              code: 'FRIEND_LIMIT_REACHED'
+            }
+          });
         }
 
         if (acceptResult.status === 'not_found') {
@@ -77,7 +100,10 @@ exports.sendFriendRequest = async (req, res, next) => {
         });
       }
 
-      return res.status(400).json({ error: { message: 'Friend request already sent.' } });
+      return res.status(200).json({
+        status: 'success',
+        data: { request: existing, alreadySent: true }
+      });
     }
 
     const request = await Friendship.create(req.user.id, targetUser.id);
