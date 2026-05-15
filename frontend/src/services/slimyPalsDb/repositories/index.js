@@ -1,6 +1,0 @@
-export { foodFactoryStockRepository } from './foodFactoryStockRepository'
-export { friendshipsRepository } from './friendshipsRepository'
-export { interactionLogsRepository } from './interactionLogsRepository'
-export { pendingSyncActionsRepository } from './pendingSyncActionsRepository'
-export { slimesRepository } from './slimesRepository'
-export { usersRepository } from './usersRepository'
