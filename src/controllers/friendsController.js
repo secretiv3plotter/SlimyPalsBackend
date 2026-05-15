@@ -46,7 +46,12 @@ exports.sendFriendRequest = async (req, res, next) => {
       : await User.findByUsername(username);
 
     if (!targetUser) {
-      return res.status(404).json({ error: { message: 'User not found' } });
+      return res.status(404).json({
+        error: {
+          message: 'User not found',
+          code: 'FRIEND_USER_NOT_FOUND'
+        }
+      });
     }
 
     if (targetUser.id === req.user.id) {
@@ -91,7 +96,12 @@ exports.sendFriendRequest = async (req, res, next) => {
         }
 
         if (acceptResult.status === 'not_found') {
-          return res.status(404).json({ error: { message: 'Friend request not found or not for you' } });
+          return res.status(404).json({
+            error: {
+              message: 'Friend request not found or not for you',
+              code: 'FRIENDSHIP_UNAVAILABLE'
+            }
+          });
         }
 
         return res.status(200).json({
@@ -123,11 +133,21 @@ exports.acceptFriendRequest = async (req, res, next) => {
 
     const acceptResult = await Friendship.acceptWithFriendLimit(id, req.user.id, MAX_FRIENDS);
     if (acceptResult.status === 'friend_limit') {
-      return res.status(400).json({ error: { message: 'Both users need space for another friend before accepting.' } });
+      return res.status(400).json({
+        error: {
+          message: 'Both users need space for another friend before accepting.',
+          code: 'FRIEND_LIMIT_REACHED'
+        }
+      });
     }
 
     if (acceptResult.status === 'not_found') {
-      return res.status(404).json({ error: { message: 'Friend request not found or not for you' } });
+      return res.status(404).json({
+        error: {
+          message: 'Friend request not found or not for you',
+          code: 'FRIENDSHIP_UNAVAILABLE'
+        }
+      });
     }
 
     res.status(200).json({
@@ -145,7 +165,12 @@ exports.removeFriend = async (req, res, next) => {
     const result = await Friendship.remove(id, req.user.id);
     
     if (!result) {
-      return res.status(404).json({ error: { message: 'Friendship not found' } });
+      return res.status(404).json({
+        error: {
+          message: 'Friendship not found',
+          code: 'FRIENDSHIP_UNAVAILABLE'
+        }
+      });
     }
 
     res.status(204).send();
